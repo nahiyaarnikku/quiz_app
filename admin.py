@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import get_mongo_client, save_quiz_to_db, download_quiz, extract_text_from_file
+from utils import generate_mcqs, get_mongo_client, save_quiz_to_db, download_quiz, extract_text_from_file
 import json
 
 def admin_panel():
