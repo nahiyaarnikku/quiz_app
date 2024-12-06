@@ -1,6 +1,6 @@
 # student.py
 import streamlit as st
-from utils import get_mongo_client, generate_student_result_pdf
+from utils import get_mongo_client, generate_student_result_pdf, parse_mcqs
 from bson.objectid import ObjectId
 
 def student_panel():
@@ -16,9 +16,45 @@ def student_panel():
             st.session_state.quiz = quiz
             st.session_state.current_question = 0
             st.session_state.score = 0
+            st.session_state.mcqs = []
             st.session_state.answers = []
+            st.session_state.quiz_generated = True
+            st.session_state.mcqs = parse_mcqs
+
         else:
             st.error("Invalid Quiz ID")
+
+    # if "quiz_generated" in st.session_state and st.session_state.quiz_generated:
+    #     st.session_state.quiz_started = True
+    #     st.session_state.current_question = 0
+    #     st.session_state.score = 0
+    #     st.session_state.quiz_generated = False
+    #     st.rerun()
+
+    # if "quiz_started" in st.session_state and st.session_state.quiz_started:
+    #     if st.session_state.current_question < len(parse_mcqs):
+    #         mcq = st.session_state.mcqs[st.session_state.current_question]
+
+    #         # Display the question text separately
+    #         st.markdown(f"**Question {st.session_state.current_question + 1}:** {mcq['question']}")
+
+    #         # Use st.radio for the options only
+    #         user_answer = st.radio("Select your answer:", mcq['options'], key=f"question_{st.session_state.current_question}")
+
+    #         # Next button logic
+    #         if st.button("Next", key="next_question_button"):
+    #             st.session_state.user_answers.append(user_answer)
+    #             st.session_state.current_question += 1
+    #             st.rerun()
+
+    #     else:
+    #         # Calculate the score after all questions have been answered
+    #         st.session_state.score = sum(
+    #             1 for user_ans, mcq in zip(st.session_state.user_answers, st.session_state.mcqs)
+    #             if user_ans.split(")")[0].strip() == mcq["correct_answer"].split(")")[0].strip()
+    #         )
+
+    #         st.write(f"Quiz completed! Your score: {st.session_state.score}/{len(st.session_state.mcqs)}")
 
     if "quiz" in st.session_state:
         quiz = st.session_state.quiz
@@ -31,16 +67,16 @@ def student_panel():
 
             if st.button("Next"):
                 st.session_state.answers.append(answer)
-                if answer == mcq["correct_answer"]:
+                if answer.strip().split(")")[0] == mcq["correct_answer"].strip().split(")")[0]:
                     st.session_state.score += 1
-                st.session_state.current_question += 1
+                    st.session_state.current_question += 1
         else:
             st.success(f"Quiz Completed! Your Score: {st.session_state.score}/{len(quiz['mcqs'])}")
             
             # Collect student details
             student_name = st.text_input("Enter your name", key="student_name")
             student_email = st.text_input("Enter your email", key="student_email")
-            student_age = st.number_input("Enter your age", min_value=1, max_value=120, key="student_age")
+            student_age = st.number_input("Enter your Roll no.", min_value=1, max_value=120, key="student_age")
             
             if st.button("Submit Results"):
                 if not student_name or not student_email or not student_age:

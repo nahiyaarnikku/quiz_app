@@ -30,41 +30,51 @@ def extract_text_from_file(file):
     return None
 
 def generate_mcqs(text, num_questions, num_options):
-    prompt = f"""
-        Generate {num_questions} multiple-choice questions (MCQs) based on the following text. Each MCQ should have {num_options} options.
+    prompt =  f"""
+    You are an AI assistant helping the user generate multiple-choice questions (MCQs) based on the following text:
+    '{text}'
+    Please generate {num_questions} MCQs from the text. Each question should have: A clear question and,
+    - {num_options} answer options (labeled A, B, C, etc.)
+    - The correct answer clearly indicated
+    Format:
+    ## MCQ
+    [question]
+    A) [option A]
+    B) [option B]
+    ...
+    Correct Answer: [correct option]
+    """
 
-        Text: {text}
-
-        Please follow this format for each MCQ:
-
-        ## MCQ
-        Question: [Write the question here]
-        A. [First option]
-        B. [Second option]
-        C. [Third option]
-        ...etc
-        Correct Answer: [Write the letter of the correct option]
-
-        Ensure that:
-        1. Questions are clear and directly related to the text.
-        2. All options are plausible, but only one is correct.
-        3. The correct answer is clearly indicated.
-        4. The order of options (A, B, ....) is used consistently.
-
-        Begin generating the MCQs now:
-        """
     response = model.generate_content(prompt).text.strip()
     return parse_mcqs(response)
 
+# def parse_mcqs(mcq_text):
+#     mcqs = []
+#     for block in mcq_text.split("## MCQ")[1:]:
+#         lines = block.strip().split("\n")
+#         question = lines[0].replace("Question: ", "")
+#         options = lines[1:-1]
+#         correct_answer = lines[-1].replace("Correct Answer: ", "")
+#         mcqs.append({"question": question, "options": options, "correct_answer": correct_answer})
+#     return mcqs
 def parse_mcqs(mcq_text):
     mcqs = []
     for block in mcq_text.split("## MCQ")[1:]:
-        lines = block.strip().split("\n")
-        question = lines[0].replace("Question: ", "")
-        options = lines[1:-1]
-        correct_answer = lines[-1].replace("Correct Answer: ", "")
-        mcqs.append({"question": question, "options": options, "correct_answer": correct_answer})
+        lines = [line.strip() for line in block.strip().split("\n") if line.strip()]  # Clean and filter empty lines
+        if not lines or len(lines) < 3:  # Ensure there's a question and at least two options
+            continue
+        
+        question = lines[0].replace("Question: ", "").strip()
+        options = [line.replace(f"{chr(65 + i)})", "").strip() for i, line in enumerate(lines[1:-1])]  # Extract options
+        correct_answer = lines[-1].replace("Correct Answer: ", "").strip()
+        
+        mcqs.append({
+            "question": question,
+            "options": options,
+            "correct_answer": correct_answer
+        })
     return mcqs
+
 
 def create_shareable_link(quiz_id):
     return f"http://localhost:8501/?quiz_id={quiz_id}"
@@ -102,5 +112,9 @@ def generate_student_result_pdf(student_name, score, total_questions):
     
     pdf.cell(200, 10, txt=f"Student Name: {student_name}", ln=1)
     pdf.cell(200, 10, txt=f"Score: {score}/{total_questions}", ln=1)
+    # pdf.cell(200, 10, txt=f"Your answer: {answer}", ln=1)
+    # pdf.cell(200, 10, txt=f"Correct answer: {correct_answer}", ln=1)
+
+
     
     return pdf.output(dest='S').encode('latin-1')
