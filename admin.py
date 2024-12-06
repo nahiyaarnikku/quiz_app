@@ -1,7 +1,8 @@
+# admin.py
 import streamlit as st
-from utils import get_mongo_client, extract_text_from_file, generate_mcqs, create_shareable_link
+from utils import get_mongo_client, extract_text_from_file, generate_mcqs, create_shareable_link, generate_pdf, generate_docx
 from bson.objectid import ObjectId
-import json
+import io
 
 def admin_panel():
     st.title("Admin Panel")
@@ -42,6 +43,26 @@ def admin_panel():
             quiz_id = quizzes_collection.insert_one({"admin_id": st.session_state.admin_id, "mcqs": mcqs}).inserted_id
             link = create_shareable_link(quiz_id)
             st.success(f"Quiz created successfully! Share this link: {link}")
+
+            # Download options
+            st.subheader("Download Generated MCQs")
+            pdf_file = generate_pdf(mcqs)
+            st.download_button(
+                label="Download as PDF",
+                data=pdf_file,
+                file_name="generated_mcqs.pdf",
+                mime="application/pdf"
+            )
+
+            docx_file = generate_docx(mcqs)
+            bio = io.BytesIO()
+            docx_file.save(bio)
+            st.download_button(
+                label="Download as DOCX",
+                data=bio.getvalue(),
+                file_name="generated_mcqs.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
         # View Quiz Results
         st.subheader("Quiz Results")
