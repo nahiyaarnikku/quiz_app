@@ -24,7 +24,7 @@ def student_panel():
 
         if current_question < len(quiz["mcqs"]):
             mcq = quiz["mcqs"][current_question]
-            st.markdown(f"**Question {current_question + 1}:** {mcq['question']}")
+            st.write(f"Question {current_question + 1}: {mcq['question']}")
             answer = st.radio("Options:", mcq["options"])
 
             if st.button("Next"):
@@ -37,6 +37,7 @@ def student_panel():
             if st.button("Submit Results"):
                 db.results.insert_one({
                     "student_name": student_name,
+                    "admin_id": quiz["admin_id"],
                     "quiz_id": quiz["_id"],
                     "score": st.session_state.score,
                     "mcqs": quiz["mcqs"],

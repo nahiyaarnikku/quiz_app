@@ -1,37 +1,53 @@
 import streamlit as st
-from utils import generate_mcqs, get_mongo_client, save_quiz_to_db, download_quiz, extract_text_from_file
+from utils import get_mongo_client, extract_text_from_file, generate_mcqs, create_shareable_link
+from bson.objectid import ObjectId
 import json
 
 def admin_panel():
     st.title("Admin Panel")
+    mongo_client = get_mongo_client()
+    db = mongo_client.quiz_app
+    quizzes_collection = db.quizzes
 
-    # Upload File
-    uploaded_file = st.file_uploader("Upload a file", type=["pdf", "docx", "txt"])
-    if uploaded_file:
-        try:
-            text = extract_text_from_file(uploaded_file)  # This line will now work properly
-            st.text_area("Extracted Text", value=text, height=200)
+    # Login/Register
+    auth_option = st.radio("Login or Register as Admin:", ["Login", "Register"])
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-            num_questions = st.number_input("Number of Questions", min_value=1, max_value=10, value=5)
-            num_options = st.number_input("Number of Options per Question", min_value=2, max_value=5, value=4)
+    if st.button("Submit"):
+        if auth_option == "Register":
+            db.admins.insert_one({"username": username, "password": password})
+            st.success("Registered successfully!")
+        elif auth_option == "Login":
+            admin = db.admins.find_one({"username": username, "password": password})
+            if admin:
+                st.success("Logged in successfully!")
+                st.session_state.admin_logged_in = True
+                st.session_state.admin_id = admin["_id"]
+            else:
+                st.error("Invalid credentials")
 
-            if st.button("Generate Quiz"):
-                try:
-                    mcqs = generate_mcqs(text, num_questions, num_options)
-                    quiz_data = {
-                        "mcqs": mcqs,
-                        "admin_id": "admin123",  # Replace with the actual admin ID
-                    }
-                    quiz_id = save_quiz_to_db(quiz_data)
-                    st.success(f"Quiz generated and saved. Shareable link: http://localhost:8501/?quiz_id={quiz_id}")
-                    st.session_state.quiz_id = quiz_id
+    if st.session_state.get("admin_logged_in"):
+        st.header(f"Welcome, {username}!")
 
-                    # Provide download option for the admin
-                    if st.button("Download Quiz PDF"):
-                        file_path = download_quiz(quiz_id)
-                        with open(file_path, "rb") as file:
-                            st.download_button("Download PDF", file, file_name=f"quiz_{quiz_id}.pdf")
-                except Exception as e:
-                    st.error(f"Error generating quiz: {e}")
-        except ValueError as e:
-            st.error(f"Error extracting text: {e}")
+        # Upload File
+        uploaded_file = st.file_uploader("Upload Document (PDF/TXT/DOCX)")
+        num_questions = st.number_input("Number of Questions", min_value=1, step=1)
+        num_options = st.number_input("Number of Options per Question", min_value=2, max_value=6)
+
+        if uploaded_file and st.button("Generate Quiz"):
+            text = extract_text_from_file(uploaded_file)
+            mcqs = generate_mcqs(text, num_questions, num_options)
+            st.session_state.mcqs = mcqs
+            quiz_id = quizzes_collection.insert_one({"admin_id": st.session_state.admin_id, "mcqs": mcqs}).inserted_id
+            link = create_shareable_link(quiz_id)
+            st.success(f"Quiz created successfully! Share this link: {link}")
+
+        # View Quiz Results
+        st.subheader("Quiz Results")
+        results = db.results.find({"admin_id": st.session_state.admin_id})
+        for result in results:
+            st.write(f"Student: {result['student_name']} | Score: {result['score']}/{len(result['mcqs'])}")
+
+        if st.button("Logout"):
+            st.session_state.admin_logged_in = False
