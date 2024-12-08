@@ -201,7 +201,8 @@ def parse_mcqs(mcq_text):
     return mcqs
 
 def create_shareable_link(quiz_id):
-    return f"http://localhost:8501/?quiz_id={quiz_id}"
+    base_url = os.environ.get('BASE_URL', 'https://your-app-name.onrender.com')
+    return f"{base_url}/?quiz_id={quiz_id}
 
 def generate_pdf(mcqs):
     pdf = FPDF()
